@@ -326,7 +326,7 @@ int CheckCdrom() {
 	memset(CdromId, 0, sizeof(CdromId));
 	memset(exename, 0, sizeof(exename));
 
-	strncpy(CdromLabel, buf + 52, 32);
+	memcpy(CdromLabel, buf + 52, 32);
 
 	// skip head and sub, and go to the root directory record
 	dir = (struct iso_directory_record *)&buf[12 + 156];

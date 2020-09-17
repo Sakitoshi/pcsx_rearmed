@@ -2670,7 +2670,7 @@ static int init_memcards(void)
             else
             {
                McdDisable[1] = 0;
-               snprintf(Config.Mcd2, sizeof(Config.Mcd2), "%s/%s", dir, CARD2_FILE);
+               snprintf(Config.Mcd2, sizeof(Config.Mcd2), "%s/../../%s", dir, CARD2_FILE);
                SysPrintf("Use memcard 2: %s\n", Config.Mcd2);
             }
          }

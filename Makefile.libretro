@@ -1,3 +1,5 @@
+DEVKITARM							= /c/devkitPro/devkitARM_r45
+CTRULIB								= /c/devkitPro/libctru
 # Makefile for PCSX ReARMed (libretro)
 
 DEBUG ?= 0
