@@ -477,7 +477,10 @@ static int parsecue(const char *isofile) {
 	strncpy(cuename, isofile, sizeof(cuename));
 	cuename[MAXPATHLEN - 1] = '\0';
 	if (strlen(cuename) >= 4) {
-		strcpy(cuename + strlen(cuename) - 4, ".cue");
+		// If 'isofile' is a '.cd<X>' file, use it as a .cue file
+		//  and don't try to search the additional .cue file
+		if (strncasecmp(cuename + strlen(cuename) - 4, ".cd", 3) != 0 )
+			strcpy(cuename + strlen(cuename) - 4, ".cue");
 	}
 	else {
 		return -1;
@@ -604,9 +607,9 @@ static int parsecue(const char *isofile) {
 			file_len = ftell(ti[numtracks + 1].handle) / 2352;
 
 			if (numtracks == 0 && strlen(isofile) >= 4 &&
-				strcmp(isofile + strlen(isofile) - 4, ".cue") == 0)
-			{
-				// user selected .cue as image file, use it's data track instead
+				(strcmp(isofile + strlen(isofile) - 4, ".cue") == 0 ||
+				strncasecmp(isofile + strlen(isofile) - 4, ".cd", 3) == 0)) {
+				// user selected .cue/.cdX as image file, use it's data track instead
 				fclose(cdHandle);
 				cdHandle = fopen(filepath, "rb");
 			}
@@ -614,6 +617,10 @@ static int parsecue(const char *isofile) {
 	}
 
 	fclose(fi);
+
+	// if there are no tracks detected, then it's not a cue file
+	if (!numtracks)
+		return -1;
 
 	return 0;
 }
@@ -1050,7 +1057,10 @@ static int handlechd(const char *isofile) {
 		goto fail_io;
 
 	if(chd_open(isofile, CHD_OPEN_READ, NULL, &chd_img->chd) != CHDERR_NONE)
-      goto fail_io;
+		goto fail_io;
+
+	if (Config.CHD_Precache && (chd_precache(chd_img->chd) != CHDERR_NONE))
+		goto fail_io;
 
    chd_img->header = chd_get_header(chd_img->chd);
 
@@ -1064,7 +1074,8 @@ static int handlechd(const char *isofile) {
    cddaBigEndian = TRUE;
 
 	numtracks = 0;
-	int frame_offset = 150;
+	int frame_offset = 0;
+	int file_offset = 0;
 	memset(ti, 0, sizeof(ti));
 
    while (1)
@@ -1089,18 +1100,20 @@ static int handlechd(const char *isofile) {
       else
          break;
 
+		if(md.track == 1)
+			md.pregap = 150;
+		else
+			sec2msf(msf2sec(ti[md.track-1].length) + md.pregap, ti[md.track-1].length);
+
 		ti[md.track].type = !strncmp(md.type, "AUDIO", 5) ? CDDA : DATA;
 
-      sec2msf(frame_offset + md.pregap, ti[md.track].start);
-      sec2msf(md.frames - md.pregap, ti[md.track].length);
+		sec2msf(frame_offset + md.pregap, ti[md.track].start);
+		sec2msf(md.frames, ti[md.track].length);
 
-      if (!strcmp(md.type, md.pgtype))
-         frame_offset += md.pregap;
+		ti[md.track].start_offset = file_offset;
 
-      ti[md.track].start_offset = frame_offset * CD_FRAMESIZE_RAW;
-
-		frame_offset += md.frames;
-		frame_offset += md.postgap;
+		frame_offset += md.pregap + md.frames + md.postgap;
+		file_offset += md.frames + md.postgap;
 		numtracks++;
 	}
 
@@ -1260,14 +1273,19 @@ static void *readThreadMain(void *param) {
       last_read_sector = requested_sector_end;
     }
 
+    index = ra_sector % SECTOR_BUFFER_SIZE;
+
     // check for end of CD
     if (ra_count && ra_sector >= max_sector) {
       ra_count = 0;
+      pthread_mutex_lock(&sectorbuffer_lock);
+      sectorbuffer[index].ret = -1;
+      sectorbuffer[index].sector = ra_sector;
+      pthread_cond_signal(&sectorbuffer_cond);
+      pthread_mutex_unlock(&sectorbuffer_lock);
     }
 
     if (ra_count) {
-
-      index = ra_sector % SECTOR_BUFFER_SIZE;
       pthread_mutex_lock(&sectorbuffer_lock);
       if (sectorbuffer[index].sector != ra_sector) {
         pthread_mutex_unlock(&sectorbuffer_lock);
@@ -1477,19 +1495,17 @@ static int cdread_chd(FILE *f, unsigned int base, void *dest, int sector)
 	int hunk;
 
 	if (base)
-		sector += base / CD_FRAMESIZE_RAW;
+		sector += base;
 
 	hunk = sector / chd_img->sectors_per_hunk;
 	chd_img->sector_in_hunk = sector % chd_img->sectors_per_hunk;
 
-	if (hunk == chd_img->current_hunk)
-		goto finish;
+	if (hunk != chd_img->current_hunk)
+	{
+		chd_read(chd_img->chd, hunk, chd_img->buffer);
+		chd_img->current_hunk = hunk;
+	}
 
-	chd_read(chd_img->chd, hunk, chd_img->buffer);
-
-	chd_img->current_hunk = hunk;
-
-finish:
 	if (dest != cdbuffer) // copy avoid HACK
 		memcpy(dest, chd_img->buffer[chd_img->sector_in_hunk],
 			CD_FRAMESIZE_RAW);

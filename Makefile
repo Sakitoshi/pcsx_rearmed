@@ -193,6 +193,10 @@ endif
 plugins/gpu_unai/gpulib_if.o: CFLAGS += -DREARMED -O3 
 CC_LINK = $(CXX)
 endif
+ifeq "$(THREAD_RENDERING)" "1"
+CFLAGS += -DTHREAD_RENDERING
+OBJS += plugins/gpulib/gpulib_thread_if.o
+endif
 
 # cdrcimg
 OBJS += plugins/cdrcimg/cdrcimg.o
@@ -254,7 +258,9 @@ LDFLAGS += -lm
 endif
 
 # dfinput
+ifneq "$(PLATFORM)" "libretro"
 OBJS += plugins/dfinput/main.o plugins/dfinput/pad.o plugins/dfinput/guncon.o
+endif
 
 # frontend/gui
 OBJS += frontend/cspace.o

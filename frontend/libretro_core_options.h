@@ -157,133 +157,8 @@ struct retro_core_option_definition option_defs_us[] = {
       "1.00",
    },
    {
-      "pcsx_rearmed_pad1type",
-      "Pad 1 Type",
-      "Pad type for player 1",
-      {
-         { "standard",  NULL },
-         { "analog",    NULL },
-         { "dualshock", NULL },
-         { "negcon",    NULL },
-         { "guncon",    NULL },
-         { "mouse",     NULL },
-         { "none",      NULL },
-         { NULL, NULL },
-      },
-      "standard",
-   },
-   {
-      "pcsx_rearmed_pad2type",
-      "Pad 2 Type",
-      "Pad type for player 2",
-      {
-         { "standard",  NULL },
-         { "analog",    NULL },
-         { "dualshock", NULL },
-         { "negcon",    NULL },
-         { "guncon",    NULL },
-         { "mouse",     NULL },
-         { "none",      NULL },
-         { NULL, NULL },
-      },
-      "standard",
-   },
-   {
-      "pcsx_rearmed_pad3type",
-      "Pad 3 Type",
-      "Pad type for player 3",
-      {
-         { "standard",  NULL },
-         { "analog",    NULL },
-         { "dualshock", NULL },
-         { "negcon",    NULL },
-         { "guncon",    NULL },
-         { "mouse",     NULL },
-         { "none",      NULL },
-         { NULL, NULL },
-      },
-      "none",
-   },
-   {
-      "pcsx_rearmed_pad4type",
-      "Pad 4 Type",
-      "Pad type for player 4",
-      {
-         { "standard",  NULL },
-         { "analog",    NULL },
-         { "dualshock", NULL },
-         { "negcon",    NULL },
-         { "guncon",    NULL },
-         { "mouse",     NULL },
-         { "none",      NULL },
-         { NULL, NULL },
-      },
-      "none",
-   },
-   {
-      "pcsx_rearmed_pad5type",
-      "Pad 5 Type",
-      "Pad type for player 5",
-      {
-         { "standard",  NULL },
-         { "analog",    NULL },
-         { "dualshock", NULL },
-         { "negcon",    NULL },
-         { "guncon",    NULL },
-         { "mouse",     NULL },
-         { "none",      NULL },
-         { NULL, NULL },
-      },
-      "none",
-   },{
-      "pcsx_rearmed_pad6type",
-      "Pad 6 Type",
-      "Pad type for player 6",
-      {
-         { "standard",  NULL },
-         { "analog",    NULL },
-         { "dualshock", NULL },
-         { "negcon",    NULL },
-         { "guncon",    NULL },
-         { "mouse",     NULL },
-         { "none",      NULL },
-         { NULL, NULL },
-      },
-      "none",
-   },{
-      "pcsx_rearmed_pad7type",
-      "Pad 7 Type",
-      "Pad type for player 7",
-      {
-         { "standard",  NULL },
-         { "analog",    NULL },
-         { "dualshock", NULL },
-         { "negcon",    NULL },
-         { "guncon",    NULL },
-         { "mouse",     NULL },
-         { "none",      NULL },
-         { NULL, NULL },
-      },
-      "none",
-   },{
-      "pcsx_rearmed_pad8type",
-      "Pad 8 Type",
-      "Pad type for player 8",
-      {
-         { "standard",  NULL },
-         { "analog",    NULL },
-         { "dualshock", NULL },
-         { "negcon",    NULL },
-         { "guncon",    NULL },
-         { "mouse",     NULL },
-         { "none",      NULL },
-         { NULL, NULL },
-      },
-      "none",
-   },
-   {
       "pcsx_rearmed_multitap1",
-      "Multitap 1",
+      "Multitap 1 (Restart)",
       "Enables/Disables multitap on port 1, allowing upto 5 players in games that permit it.",
       {
          { "auto",     NULL },
@@ -291,11 +166,11 @@ struct retro_core_option_definition option_defs_us[] = {
          { "enabled",  NULL },
          { NULL, NULL },
       },
-      "auto",
+      "disabled",
    },
    {
       "pcsx_rearmed_multitap2",
-      "Multitap 2",
+      "Multitap 2 (Restart)",
       "Enables/Disables multitap on port 2, allowing up to 8 players in games that permit it. Multitap 1 has to be enabled for this to work.",
       {
          { "auto",     NULL },
@@ -303,7 +178,7 @@ struct retro_core_option_definition option_defs_us[] = {
          { "enabled",  NULL },
          { NULL, NULL },
       },
-      "auto",
+      "disabled",
    },
    {
       "pcsx_rearmed_negcon_deadzone",
@@ -633,7 +508,7 @@ struct retro_core_option_definition option_defs_us[] = {
    {
       "pcsx_rearmed_psxclock",
       "PSX CPU Clock",
-#ifdef HAVE_PRE_ARMV7
+#if defined(HAVE_PRE_ARMV7) && !defined(_3DS)
       "Overclock or underclock the PSX clock. Default is 50",
 #else
       "Overclock or underclock the PSX clock. Default is 57",
@@ -712,7 +587,7 @@ struct retro_core_option_definition option_defs_us[] = {
          { "100", NULL },
          { NULL, NULL },
       },
-#ifdef HAVE_PRE_ARMV7
+#if defined(HAVE_PRE_ARMV7) && !defined(_3DS)
       "50",
 #else
       "57",
@@ -973,6 +848,20 @@ struct retro_core_option_definition option_defs_us[] = {
       "disabled",
    },
 #endif /* GPU UNAI Advanced Settings */
+#ifdef THREAD_RENDERING
+   {
+      "pcsx_rearmed_gpu_thread_rendering",
+      "Threaded Rendering",
+      "When enabled, runs GPU commands in a thread. Sync waits for drawing to finish before vsync. Async will not wait unless there's another frame behind it.",
+      {
+         { "disabled", NULL },
+         { "sync",  NULL },
+         { "async",  NULL },
+         { NULL, NULL},
+      },
+      "disabled",
+   },
+#endif
 
    {
       "pcsx_rearmed_show_bios_bootlogo",
@@ -1046,10 +935,11 @@ struct retro_core_option_definition option_defs_us[] = {
    {
       "pcsx_rearmed_async_cd",
       "CD Access Method (Restart)",
-      "Select method used to read data from content disk images. 'Synchronous' mimics original hardware. 'Asynchronous' can reduce stuttering on devices with slow storage.",
+      "Select method used to read data from content disk images. 'Synchronous' mimics original hardware. 'Asynchronous' can reduce stuttering on devices with slow storage. 'Precache' loads disk image into memory for faster access (CHD only).",
       {
-         { "sync", "Synchronous" },
-         { "async",  "Asynchronous" },
+         { "sync",     "Synchronous" },
+         { "async",    "Asynchronous" },
+         { "precache", "Precache" },
          { NULL, NULL},
       },
       "sync",

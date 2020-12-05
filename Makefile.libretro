@@ -50,6 +50,7 @@ EXTRA_LDFLAGS =
 ifeq ($(platform), unix)
 	TARGET := $(TARGET_NAME)_libretro.so
 	fpic := -fPIC
+	THREAD_RENDERING = 1
 ifneq ($(findstring SunOS,$(shell uname -s)),)
 	CC = gcc
 endif
@@ -91,13 +92,15 @@ else ifeq ($(platform),$(filter $(platform),ios-arm64))
 
 else ifneq (,$(findstring ios,$(platform)))
 	ARCH := arm
-	DYNAREC ?= ari64
+#	DYNAREC ?= ari64
 	HAVE_NEON = 1
 	BUILTIN_GPU = neon
 	TARGET := $(TARGET_NAME)_libretro_ios.dylib
 ifeq ($(DYNAREC),lightrec)
 	# Override
-	DYNAREC = 0
+	DYNAREC := 0
+endif
+ifeq ($(DYNAREC),0)
 	TARGET := $(TARGET_NAME)_interpreter_libretro_ios.dylib
 endif
 	fpic := -fPIC
@@ -187,7 +190,7 @@ else ifeq ($(platform), vita)
 	CFLAGS += -mcpu=cortex-a8 -mtune=cortex-a8 -mfpu=neon -marm
 	CFLAGS += -fsingle-precision-constant -mword-relocations -fno-unwind-tables
 	CFLAGS += -fno-asynchronous-unwind-tables -ftree-vectorize -funroll-loops
-	CFLAGS += -fno-optimize-sibling-calls -fcommon
+	CFLAGS += -fno-optimize-sibling-calls
 	CFLAGS += -I$(VITASDK)/include -Ifrontend/vita
 	CFLAGS += -DNO_SOCKET -DNO_OS -DNO_DYLIB
 	ASFLAGS += -mcpu=cortex-a8 -mtune=cortex-a8 -mfpu=neon
@@ -208,9 +211,9 @@ else ifeq ($(platform), ctr)
 	CC = $(DEVKITARM)/bin/arm-none-eabi-gcc$(EXE_EXT)
 	CXX = $(DEVKITARM)/bin/arm-none-eabi-g++$(EXE_EXT)
 	AR = $(DEVKITARM)/bin/arm-none-eabi-ar$(EXE_EXT)
-	CFLAGS += -DARM11 -D_3DS -DNO_OS -DNO_DYLIB -DNO_SOCKET -DGPU_UNAI_USE_FLOATMATH -DGPU_UNAI_USE_FLOAT_DIV_MULTINV
+	CFLAGS += -DARM11 -D_3DS -DNO_OS -DNO_DYLIB -DNO_SOCKET -DTHREAD_ENABLED -DGPU_UNAI_USE_FLOATMATH -DGPU_UNAI_USE_FLOAT_DIV_MULTINV
 	CFLAGS += -march=armv6k -mtune=mpcore -mfloat-abi=hard -marm -mfpu=vfp -mtp=soft
-	CFLAGS += -Wall -mword-relocations -fcommon
+	CFLAGS += -Wall -mword-relocations
 	CFLAGS += -fomit-frame-pointer -ffast-math -funroll-loops
 	CFLAGS += -Ifrontend/3ds -I$(CTRULIB)/include
 	CFLAGS += -Werror=implicit-function-declaration
@@ -219,6 +222,7 @@ else ifeq ($(platform), ctr)
 
 #	CFLAGS += -DPCSX
 	BUILTIN_GPU = unai
+	THREAD_RENDERING = 1
 	DYNAREC = ari64
 	DRC_CACHE_BASE = 0
 	ARCH = arm
@@ -286,7 +290,7 @@ else ifeq ($(platform), rpi3)
 	BUILTIN_GPU = neon
 	DYNAREC = ari64
 
-#Raspberry Pi 4
+#Raspberry Pi 4 with a 32bit GNU/Linux OS
 else ifeq ($(platform), rpi4)
 	TARGET := $(TARGET_NAME)_libretro.so
 	fpic := -fPIC
@@ -296,6 +300,15 @@ else ifeq ($(platform), rpi4)
 	ARCH = arm
 	BUILTIN_GPU = neon
 	DYNAREC = ari64
+
+#Raspberry Pi 4 with a 64bit GNU/Linux OS
+else ifeq ($(platform), rpi4_64)
+        TARGET := $(TARGET_NAME)_libretro.so
+        ARCH := arm64
+        BUILTIN_GPU = unai
+        DYNAREC = lightrec
+        fpic := -fPIC
+        CFLAGS += -march=armv8-a+crc+simd -mtune=cortex-a72 -ftree-vectorize
 
 # Classic Platforms ####################
 # Platform affix = classic_<ISA>_<µARCH>
@@ -381,6 +394,14 @@ else ifneq (,$(findstring armv,$(platform)))
 	endif
 	ARCH = arm
 	DYNAREC = ari64
+
+# Emscripten
+else ifeq ($(platform), emscripten)
+   TARGET  := $(TARGET_NAME)_libretro_$(platform).bc
+   fpic    := -fPIC
+   SHARED  := -shared -Wl,--no-undefined -Wl,--version-script=link.T
+   CFLAGS += -DNO_DYLIB -DNO_SOCKET
+   STATIC_LINKING = 1
 
 # Windows
 else
